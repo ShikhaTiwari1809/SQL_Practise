@@ -1,0 +1,464 @@
+******************************Queries Practise set*********************************
+
+
+***Q1 - Department wise 3rd highest salary if there are less than 3 then return highest salary.
+
+with cte as(
+select *,
+dense_rank() over (partition by deptcode order by basicpay desc) as rn,
+count(1) over(partition by deptcode) as cnt
+from emp)
+
+select * from cte
+where rn = case when cnt<3 then cnt else 3 end;
+
+
+***Q2 - %change in salary over previous one.
+
+select basicpay,pbasic, (basicpay-pbasic)/pbasic*100 as perc from
+(
+select basicpay, lag(basicpay,1) over(order by basicpay) as pbasic from emp)a;
+
+
+***Q3. Employee hierarchy (this is done using recursive CTE)
+
+with recursive cte as
+(
+select emp.empcode,emp.empname,emp.supcode
+from emp
+where emp.empcode=1
+
+UNION ALL
+
+select e.empcode,e.empname,e.supcode
+from emp e inner join cte c on e.empcode=c.supcode
+)
+
+select distinct c1.empname as empname,c2.empname as managername 
+from cte c1 left join cte c2 on c1.supcode<=>c2.empcode;
+
+***Q4. PIVOT operation with pivot operator and w/o that.
+
+select country,city1,city2 from
+(select country,city,
+concat('city',row_number() over(partition by country order by city)) as seq
+from pivot)temp
+PIVOT 
+(max(city) for seq in(city1,city2)) as pivottable;
+
+Without:
+
+select country,
+max(case when seq=1 then city end) as city1,
+max(case when seq=2 then city end) as city2
+from 
+(
+select country,city,
+row_number() over(partition by country order by city) as seq
+from pivot
+)x
+group by country;
+
+
+
+***Q5. Emp table - empid, name, deptid, salary
+o/p - deptid, minsalary, minsalaryemp, maxsalary, maxsalaryemp
+
+with cte as(
+select deptcode ,empname,basicpay,
+RANK() over(partition by deptcode ORDER BY BASICPAY DESC) as maxsalary,
+RANK() over(partition by deptcode ORDER BY BASICPAY ) as minsalary
+from emp)
+
+select deptcode,
+max(case when minsalary=1 then empname else null end )minsalaryemp,
+max(case when minsalary=1 then basicpay else null end )minsalary,
+max(case when maxsalary=1 then empname else null end) maxsalaryemp,
+max(case when maxsalary=1 then basicpay else null end )maxsalary
+from cte
+group by deptcode;
+
+
+***Q6. Class Rank
+
+select
+dense_rank() over (order by maths_marks+science_marks desc) as class_rank,
+roll_no,name
+from marks;
+
+
+***Q7. Selecting orders only if they are for consecutive months.
+
+with cte as
+(
+select distinct cust_id,MONTH(txn_date),Lead(Month(txn_date)) over(partition by cust_id),
+Lead(Month(txn_date)) over(partition by cust_id)-MONTH(txn_date) as diff from ordersnew
+)
+
+select cust_id,diff from cte
+where diff=1;
+
+***Q8. product - agent,country,amount
+o/p - Agent, India,UK	
+
+India and Uk column will have sum of amount of agents for that
+
+
+select Agent,
+sum(case when country='India' then amt else 0 end) as India,
+sum(case when country='UK' then amt else 0 end) as UK
+from product
+group by agent;
+
+
+***Q9 .
+ID,NAME,DATE
+
+'1','Ram','2015-01-01 00:00:00'
+'1','Ram.Kumar','2015-08-01 00:00:00'
+'1','Ram Kumar','2017-01-01 00:00:00'
+'2','Shubham','2015-01-01 00:00:00'
+'2','Shubham Kr','2017-07-01 00:00:00'
+
+name is corrected and latest will be correct name , select for each its correct name
+
+
+With cte as(
+Select id, name,date,
+row_number() over(partition by id order by date desc) as rn
+From sample)
+
+Select sample.*,cte.name as correct_name
+From sample inner join cte on sample.id=cte.id #and cte.rn=1
+;
+
+***Q 10. Delete duplicate records
+
+delete from employee 
+where id not in(
+
+select max(id)
+from employee
+group by name,country
+). #this will leave max id of each and other will be deleted
+
+
+***Q11. Check validity of EMAIL
+
+SELECT EmailId
+FROM Students
+WHERE EmailId LIKE '%_@__%.__%' 
+    AND PATINDEX('%[^a-z,0-9,@,.,_]%', REPLACE(email, '-', 'a')) = 0
+
+
+
+SELECT EmailAddress AS NotValidEmail
+FROM Contacts
+WHERE NOT EmailAddress LIKE '%_@__%.__%'
+        AND PATINDEX('%[^a-z,0-9,@,.,_,\-]%', EmailAddress) = 0
+
+
+***Q12. SUM of positive values and negative values
+
+
+Select sum(case when int>0 then int else null end) as possum,
+sum(case when int<0 then int else null end) as negsum
+From table_int;
+
+***Q13. extract file name 
+
+select filename,SUBSTRING(filename,length(filename)-INSTR(reverse(filename),"\\")+2,length(filename))
+from temp;
+
+
+***Q14. 
+GCCODE
+GC001 0
+GC002 0
+Gc002 1
+
+With ctte as(
+Select gccode,
+rank() over(partition by gccode)-1 as rn
+)
+
+Select case when rn=0 then gccode
+Else concat(gccode,”_”,rn) end as GCODENEW
+From ctte;
+
+
+***Q15. 
+col2
+
+2022-09-03
+2022-09
+09-03
+
+Print date,month,year , here date is stored as varchar
+
+
+With cte as(
+Select col2,
+INSTR(col2,"-") as dummy
+from temp)
+
+Select *,
+case when dummy=5 then substring(col2,1,4) else "" end as birth_year ,
+Case when dummy=5 then substring(col2,6,2) else substring(col2,1,2) end as birth_month,
+Case when dummy=5 then substring(col2,9,2) else substring(col2,4,2) end as birth_date
+From cte;
+
+
+***Q16. Select employee who has joined for more than 5 years and salary is gretaer than manager’s salary
+
+
+With cte as(
+Select emp.*,mg.mg_id,Datediff(‘year’,Getdate(),startDate) as no_of_years
+From emp left join manager as mg
+On emp.id=mg.mgr_id)
+
+Select emp.empname,cte.empname as manager from emp inner join cte on emp.id=cte.mg_id
+Where no_of_years>5 and 
+
+***Q17. 
+
+d, name , sub1 ,sub2
+1, abc, 10,85
+
+Select b.id, name,
+max(Case when sub=1 then marks else null end) as sub1,
+max(Case when sub=2 then marks else null end) as sub2
+From b inner join a on b.id=a.id;
+
+Select id,sub_1,sub_2 from
+(Select id,marks,concat(‘sub_’ , sub)
+ from b)
+P
+PIVOT
+(max(marks) for sub in(1,2)) as pivottable;
+
+
+***Q18. UPDATE query using data from child table .
+
+Update sales s inner join product p on p.id=s.product_id
+Set s.total_amount= p.order_qty*p.unit_price;
+
+
+***Q19 , Second occurrence of “r” -
+
+Select instr(substring(colname,instr(colname,”r”)+1,len(colname)),”r”)
+From table_name;
+ 
+***Q20 Select product_code,
+sum(Case when month(order_date)=6 then order_qty*unit_price else null end ) total_june_amount,
+sum(Case when month(order_date)=7 then order_qty*unit_price else null end) total_july_amount
+From sales
+Group by product_code;
+
+
+*** Q21.  Find Domain Name
+www.houseofalpha.in
+www.hzonecapital.com
+
+Www.
+
+Select 
+left(3,col) as col1,
+SUBSTRING(col,4,INSTR(“.”,REVERSE(Col)) 
+
+SUBSTRING(col,
+
+
+
+***Q 22. 
+----------+------------+-------------+------------+
+| order_id | order_date | customer_id | product_id |
++----------+------------+-------------+------------+
+| 1 | 2020-07-31 | 1 | 1 |
+| 2 | 2020-07-30 | 2 | 2 |
+| 3 | 2020-08-29 | 3 | 3 |
+| 4 | 2020-07-29 | 4 | 1 |
+| 5 | 2020-06-10 | 1 | 2 |
+| 6 | 2020-08-01 | 2 | 1 |
+| 7 | 2020-08-01 | 3 | 3 |
+| 8 | 2020-08-03 | 1 | 2 |
+| 9 | 2020-08-07 | 2 | 3 |
+| 10 | 2020-07-15 | 1 | 2 |
++----------+------------+-------------+------------+
+
+
+the most frequently ordered product(s) for each customer
+
+With cte as(
+Select customer_id,product_id
+count(product_id) as cnt 
+From orders
+Group by customer_id,product_id)
+,
+Cte2 as(
+Select customer_id,product
+rank() over(partition by customer_id order by cnt desc) as rn
+From cte)
+
+Select * from cte2
+Where rn=1;
+
+
+Select * from(
+Select customer_id,product
+rank() over(partition by customer_id order by cnt desc) as rn
+From(
+Select customer_id,product_id
+count(product_id) as cnt 
+From orders
+Group by customer_id,product_id
+)t1
+)t2
+Where rn=1;
+
+***Q 23. Find top 3 products contributing to maximum sales for each month.
+
+Order_date, order_id, product_id, sales
+2022-12-24,100,1,1000
+2022-12-25,200,1,2000
+2022-12-26,300,2,3000
+2022-12-25,200,3,2000
+2022-12-26,300,4,3000
+
+2022-11-19,101,1,1000
+2022-11-20,201,2,2000
+2022-11-21,310,2,3000
+…….
+
+
+Product_id, product_name,product_type
+1, Book, Stationary
+2, Mobile, Electronics
+3, Mouse, Electronics
+4, Pen, Stationary
+5, Paper, Stationary
+
+
+With cte1 as
+(
+Select  
+
+
+cte as(
+Select product_id,Month(order_date) as order_month, sales,
+sum() over (partition by month(order_date),product_id order by sales desc) as rn
+From order)
+
+Select order_month,cte.product_id,product_name,sales from cte inner join product
+
+
+
+***Q 24. Find the product contributing to 3rd highest sales for each month
+
+With cte as(
+Select month(order_date) as order_month,product_id,sum(sales) as total_sales
+From orders
+Group by product_id,month(order_date)
+)
+
+,cte2 as(
+
+Select order_month,product_id,
+rank() over(partition by order_month order by total_sales desc) as rn
+From cte)
+
+Select * from cte2
+Where rn=3;
+
+
+***Q 25.
+Country - state_names
+
+
+With cte as(
+Select state_names,
+rank() over(partition by length(state_names) order by length(state_names) desc) as max_len,
+rank() over(partition by length(state_names) order by length(state_names) ) as min_len
+From country)
+
+Select state_names from cte
+Where max_len=1 or min_len=1
+Order by state_names;
+
+***Q 26.
+Employee- empid, empname , doj 
+
+Sp empid as name ,out - years of exp
+
+Create procedure spGetexp
+@empid int
+@yrofexp int output
+As
+Begin
+    Select datediff(years, doj,getdate()) into @yrofexp from employee where empid = @empid
+END
+
+***
+Declare @expyears int
+Execute spGetexp 1 ,@expyears Output
+Print @expyears
+
+
+***Q 27.
+Employee  - empid,name,salary,deptid
+Department -deptid,name
+
+
+Name of emp - 7th highest in IT Dept
+
+
+With cte as(
+Select employee.name as empname,department.name as deptname,salary
+From employee inner join department on employee.deptid=department.deptid
+Where department.name=“IT”)
+
+,Cte2 as(
+Select *,
+rank() over( order by salary desc) as rn
+From cte)
+
+Select * from cte2
+Where rn=7;
+
+
+***Q 28.
+Student - stuid, eng_marks, maths_marks, science_marks
+                1, 50, 90,80
+
+O/p-
+
+Id , max_marks_sub, Max_Marks
+1, maths,90
+
+
+Select Stuid,
+
+Case when eng_marks>maths_marks and  eng_marks>science_marks then eng_marks 
+Else when maths_marks>eng_marks and  maths_marks>science_marks then maths_marks,
+Else when science_marks>eng_marks and  science_marks> maths_marks then science_marks
+end as max_marks,
+
+Case when eng_marks>maths_marks and  eng_marks>science_marks then “English” 
+Else when maths_marks>eng_marks and  maths_marks>science_marks then “Maths”,
+Else when science_marks>eng_marks and  science_marks> maths_marks then “Science”
+end as max_marks_sub
+
+From student;
+
+
+
+
+
+
+
+
+
+
+
+
+
