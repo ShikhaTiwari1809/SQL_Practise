@@ -2,8 +2,8 @@
 
 
 select user_id,
-ROUND(sum(case when activity_type ='free_trial' then activity_duration else 0 end)/sum(case when activity_type ='free_trial' then 1 else 0 end),2) as trial_avg_duration,
-ROUND(sum(case when activity_type ='paid' then activity_duration else 0 end)/sum(case when activity_type ='paid' then 1 else 0 end),2) as paid_avg_duration
+ROUND(AVG(CASE WHEN activity_type = 'free_trial' THEN activity_duration END), 2) AS trial_avg_duration,
+ROUND(AVG(CASE WHEN activity_type = 'paid' THEN activity_duration END), 2) AS paid_avg_duration
 from UserActivity
 group by user_id
 having paid_avg_duration is not null
