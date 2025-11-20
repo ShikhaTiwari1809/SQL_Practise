@@ -17,7 +17,11 @@ from grouped_logs)
 select 
 ip, invalid_count
 from cte
-where part1>255 or part2>255 or part3>255 or part4>255 or 
-part1 like('0%') or part2 like('0%') or part3 like('0%') or part4 like('0%')
+where part1>255 or part2>255 or part3>255 or part4>255 or
+   LEFT(part1, 1) = 0
+    OR LEFT(part2, 1) = 0
+    OR LEFT(part3, 1) = 0
+    OR LEFT(part4, 1) = 0 
+#part1 like('0%') or part2 like('0%') or part3 like('0%') or part4 like('0%')
 or dot_count!=3
 order by  invalid_count desc,ip desc;
