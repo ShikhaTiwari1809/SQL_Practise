@@ -3,7 +3,7 @@
 select Signups.user_id,
 ROUND(sum(Case when action ='confirmed' then 1 else 0 end) /
 count(Signups.user_id) ,2) as confirmation_rate
-from Confirmations c right join Signups on Signups.user_id = c.user_id
+from Signups left join  Confirmations on Signups.user_id = Confirmations.user_id
 group by Signups.user_id
 
 
