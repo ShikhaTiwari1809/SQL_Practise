@@ -15,7 +15,7 @@ category_pairs AS (
     FROM user_categories uc1
     JOIN user_categories uc2
         ON uc1.user_id = uc2.user_id
-       AND uc1.category < uc2.category     -- enforce alphabetical order
+       AND uc1.category < uc2.category   
 )
 
 SELECT
