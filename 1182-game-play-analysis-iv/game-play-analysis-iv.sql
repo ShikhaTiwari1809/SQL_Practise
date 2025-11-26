@@ -1,12 +1,14 @@
 # Write your MySQL query statement below
-with cte as(
-select player_id,
-event_date,
-LEAD(event_date,1) over(partition by player_id order by event_date) as next_game,
-min(event_date) over(partition by player_id order by event_date) as first_game
-from Activity)
+WITH FIRST_LOGIN AS(
+    SELECT PLAYER_ID, MIN(EVENT_DATE) AS FIRST_LOG
+    FROM ACTIVITY
+    GROUP BY PLAYER_ID
+) 
 
-select ROUND(count(player_id)/(select count(distinct player_id) as total_cnt from Activity),2) as fraction
-from cte 
-where event_date = first_game and datediff(next_game,event_date) =1
+select ROUND(
+    COUNT(ACTIVITY.player_id) / COUNT(FIRST_LOGIN.PLAYER_ID) ,2
+) as fraction
+from FIRST_LOGIN left join ACTIVITY
+on FIRST_LOGIN.PLAYER_ID= ACTIVITY.PLAYER_ID and event_date = Date_add(FIRST_LOG, INTERVAL 1 Day)
+
 ;
