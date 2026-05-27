@@ -196,17 +196,27 @@ col2
 
 Print date,month,year , here date is stored as varchar
 
+SELECT
+    col2,
 
-With cte as(
-Select col2,
-INSTR(col2,"-") as dummy
-from temp)
+    CASE 
+        WHEN LENGTH(col2) = 10 THEN SUBSTRING(col2, 1, 4)
+        WHEN LENGTH(col2) = 7  THEN SUBSTRING(col2, 1, 4)
+        ELSE NULL
+    END AS year,
 
-Select *,
-case when dummy=5 then substring(col2,1,4) else "" end as birth_year ,
-Case when dummy=5 then substring(col2,6,2) else substring(col2,1,2) end as birth_month,
-Case when dummy=5 then substring(col2,9,2) else substring(col2,4,2) end as birth_date
-From cte;
+    CASE
+        WHEN LENGTH(col2) = 10 THEN SUBSTRING(col2, 6, 2)
+        WHEN LENGTH(col2) = 7  THEN SUBSTRING(col2, 6, 2)
+        WHEN LENGTH(col2) = 5  THEN SUBSTRING(col2, 1, 2)
+    END AS month,
+
+    CASE
+        WHEN LENGTH(col2) = 10 THEN SUBSTRING(col2, 9, 2)
+        WHEN LENGTH(col2) = 5  THEN SUBSTRING(col2, 4, 2)
+        ELSE NULL
+    END AS date
+FROM your_table;
 
 
 ***Q16. Select employee who has joined for more than 5 years and salary is gretaer than manager’s salary
